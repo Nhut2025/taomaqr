@@ -2,17 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Upload & Gallery (One‑Page)</title>
+  <title>Upload & Create QR</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
     #uploadSection, #gallerySection { margin-top: 20px; }
-    #gallerySection { display: none; }
     img { max-width: 200px; margin: 5px; border-radius: 6px; }
-    .qr-block { margin-top: 20px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 8px; }
+    .qr-block { 
+      margin-top: 20px; 
+      background: #fff; 
+      padding: 15px; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+    }
     .qr-block h4 { margin: 0 0 10px; }
-    button { margin-bottom: 15px; padding: 6px 12px; border-radius: 4px; border: none; background: #007bff; color: #fff; cursor: pointer; }
-    button:hover { background: #0056b3; }
+    .qr-block button {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      background: #28a745;
+      color: #fff;
+      cursor: pointer;
+    }
+    .qr-block button:hover {
+      background: #218838;
+    }
   </style>
 </head>
 <body>
@@ -25,8 +41,8 @@
     <div id="qrContainer"></div>
   </div>
 
-  <!-- GALLERY MODE -->
-  <div id="gallerySection">
+  <!-- GALLERY MODE (nếu có img params) -->
+  <div id="gallerySection" style="display:none;">
     <button id="backBtn">← Back to Upload</button>
     <h2>Gallery</h2>
     <div id="imageGallery"></div>
@@ -44,12 +60,11 @@
     const imageGallery   = document.getElementById('imageGallery');
     const backBtn        = document.getElementById('backBtn');
 
-    // Lấy tất cả param bắt đầu bằng "img"
     const params    = new URLSearchParams(window.location.search);
     const imgParams = [...params.keys()].filter(k => k.startsWith('img'));
 
     if (imgParams.length) {
-      // --- GALLERY MODE ---
+      // GALLERY MODE
       uploadSection.style.display  = 'none';
       gallerySection.style.display = 'block';
       pageTitle.textContent        = 'Gallery';
@@ -66,15 +81,10 @@
       });
 
     } else {
-      // --- UPLOAD MODE ---
-      gallerySection.style.display = 'none';
-
+      // UPLOAD MODE
       function normalize(name) {
-        // bỏ đuôi .ext
-        let base = name.replace(/\.\w+$/, '');
-        // loại bỏ dãy số cuối cùng
-        base = base.replace(/\d+$/, '');
-        return base.trim();
+        let base = name.replace(/\.\w+$/, '').replace(/\d+$/, '').trim();
+        return base;
       }
 
       document.getElementById('imageInput')
@@ -90,7 +100,7 @@
             (groups[key] = groups[key]||[]).push(f);
           }
 
-          // Với mỗi nhóm, upload & tạo QR
+          // Với mỗi nhóm, upload & tạo QR + nút tải
           for (const baseName in groups) {
             const urls = [];
             for (const f of groups[baseName]) {
@@ -105,17 +115,16 @@
               urls.push(data.secure_url);
             }
 
-            // build params img1=..&img2=..
+            // Build query
             const query = urls.map((u,i) =>
               `img${i+1}=${encodeURIComponent(u)}`).join('&');
-            // ensure absolute URL
             const link = `${window.location.origin}${window.location.pathname}?${query}`;
 
-            // tạo QR
+            // Tạo QR vào canvas
             const canvas = document.createElement('canvas');
             await QRCode.toCanvas(canvas, link);
 
-            // hiển thị
+            // Tạo khối hiển thị
             const block = document.createElement('div');
             block.className = 'qr-block';
             block.innerHTML = `
@@ -123,6 +132,18 @@
               <p><a href="${link}" target="_blank">${link}</a></p>
             `;
             block.appendChild(canvas);
+
+            // ** Nút tải xuống QR code **
+            const btn = document.createElement('button');
+            btn.textContent = 'Download QR';
+            btn.addEventListener('click', () => {
+              const a = document.createElement('a');
+              a.href = canvas.toDataURL('image/png');
+              a.download = `${baseName}-qr.png`;
+              a.click();
+            });
+            block.appendChild(btn);
+
             qrContainer.appendChild(block);
           }
         });
